@@ -2,106 +2,90 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. Page Configuration
-st.set_page_config(page_title="AI Risk Intelligence Suite", layout="wide")
+# 1. THE ARCHITECTURE: Professional UI
+st.set_page_config(page_title="GovIntel: AI Strategic Observatory", layout="wide")
 
-# Custom Styling
+# Custom CSS for a "Security Operations Center" Look
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
-    div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        padding: 15px;
-        border-radius: 10px;
+    .stApp { background-color: #0e1117; color: white; }
+    div[data-testid="stMetricValue"] { color: #00d4ff; font-family: 'Courier New', monospace; }
+    .report-card { 
+        background-color: #1a1c24; 
+        padding: 20px; 
+        border-radius: 10px; 
+        border-left: 5px solid #00d4ff;
     }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
-    # Load the data
     df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
-    df = df.drop_duplicates(subset=['Name'])
-    
-    # CRITICAL FIX: Fill empty descriptions with text so the math doesn't break
-    df['Short Description'] = df['Short Description'].fillna('No description available')
-    
-    # MIT Risk Scoring - Using a safer method for 16k rows
-    df['Privacy_Score'] = df['Short Description'].str.contains('privacy|data|tracking|security', case=False, na=False).astype(int) * 85
-    df['Ethics_Score'] = df['Short Description'].str.contains('bias|ethics|fairness|discrimination', case=False, na=False).astype(int) * 70
-    
-    # Create a simulated Innovation Index for visualization
-    df['Innovation_Index'] = df['Short Description'].apply(len) / 10
+    df = df.drop_duplicates(subset=['Name']).fillna("N/A")
+    # MIT Risk Heuristics
+    df['Privacy_Flag'] = df['Short Description'].str.contains('data|privacy|tracking|secure', case=False)
+    df['Ethics_Flag'] = df['Short Description'].str.contains('bias|ethics|fairness|hiring', case=False)
+    df['Safety_Score'] = 100 - (df['Privacy_Flag'].astype(int)*40 + df['Ethics_Flag'].astype(int)*40)
     return df
 
-# Initialize Data
-try:
-    df = load_data()
-except Exception as e:
-    st.error(f"Error loading data: {e}")
-    st.stop()
+df = load_data()
 
-# --- SIDEBAR ---
-st.sidebar.title("🔭 Intelligence Suite")
-page = st.sidebar.radio("Navigate to:", ["Executive Overview", "MIT Risk Laboratory", "Market Explorer"])
+# --- HEADER ---
+st.title("🔭 GovIntel | AI Strategic Observatory")
+st.write("OFFICIAL USE ONLY | National AI Investment & Risk Dashboard")
 
-# --- PAGE 1: EXECUTIVE OVERVIEW ---
-if page == "Executive Overview":
-    st.title("🚀 Global AI Market Intelligence")
-    
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Ecosystem", f"{len(df):,}")
-    m2.metric("Market Sectors", df['Category'].nunique())
-    m3.metric("Privacy Flags", len(df[df['Privacy_Score'] > 0]))
-    m4.metric("Ethics Flags", len(df[df['Ethics_Score'] > 0]))
+# --- NAVIGATION ---
+tabs = st.tabs(["📊 National Overview", "🔍 Tool Intelligence Audit", "💰 Investment Strategy"])
 
-    st.markdown("---")
-    
-    st.subheader("Industry Sector Dominance")
-    top_cats = df['Category'].value_counts().head(15).reset_index()
-    top_cats.columns = ['Sector', 'Count']
-    
-    # Treemap is much more "premium" looking for a video demo
-    fig = px.treemap(top_cats, path=['Sector'], values='Count', 
-                     color='Count', color_continuous_scale='Blues')
-    st.plotly_chart(fig, use_container_width=True)
+# --- TAB 1: NATIONAL OVERVIEW ---
+with tabs[0]:
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Monitored Entities", len(df))
+    col2.metric("Market Sectors", df['Category'].nunique())
+    col3.metric("Critical Risk Alerts", (df['Safety_Score'] < 50).sum())
+    col4.metric("Average Safety Rating", f"{df['Safety_Score'].mean():.1f}%")
 
-# --- PAGE 2: MIT RISK LABORATORY ---
-elif page == "MIT Risk Laboratory":
-    st.title("⚖️ MIT Risk Audit Lab")
+    st.subheader("Market Concentration by Domain")
+    # Sunburst Chart for deeper interaction
+    fig_sun = px.sunburst(df.head(500), path=['Category', 'Name'], values='Safety_Score',
+                          color='Safety_Score', color_continuous_scale='RdYlGn')
+    st.plotly_chart(fig_sun, use_container_width=True)
+
+# --- TAB 2: TOOL INTELLIGENCE AUDIT (Deep Interactivity) ---
+with tabs[1]:
+    st.subheader("Identify & Audit Specific Tools")
+    search_col, filter_col = st.columns([2, 1])
     
-    tab1, tab2 = st.tabs(["Sector Analysis", "Tool-Level Search"])
+    with search_col:
+        tool_name = st.selectbox("Select a tool for a Deep-Dive Audit:", [""] + sorted(df['Name'].tolist()))
     
-    with tab1:
-        st.write("### Average Risk by Category")
-        risk_chart = df.groupby('Category')[['Privacy_Score', 'Ethics_Score']].mean().sort_values('Privacy_Score', ascending=False).head(10)
-        st.bar_chart(risk_chart)
+    if tool_name:
+        tool_data = df[df['Name'] == tool_name].iloc[0]
         
-    with tab2:
-        search = st.text_input("Enter Tool Name (e.g., 'Copy.ai')")
-        if search:
-            results = df[df['Name'].str.contains(search, case=False, na=False)]
-            st.dataframe(results[['Name', 'Category', 'Privacy_Score', 'Ethics_Score']])
+        st.markdown(f"""
+        <div class="report-card">
+            <h3>AUDIT REPORT: {tool_data['Name']}</h3>
+            <p><b>Category:</b> {tool_data['Category']} | <b>Safety Rating:</b> {tool_data['Safety_Score']}%</p>
+            <hr>
+            <p><b>Risk Profile:</b> {'🔴 HIGH RISK' if tool_data['Safety_Score'] < 60 else '🟢 COMPLIANT'}</p>
+            <p><b>Description:</b> {tool_data['Short Description']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Comparison logic
+        st.write("### How it compares to the Sector Average")
+        avg_safety = df[df['Category'] == tool_data['Category']]['Safety_Score'].mean()
+        st.progress(tool_data['Safety_Score']/100, text=f"Tool Score: {tool_data['Safety_Score']}")
+        st.progress(avg_safety/100, text=f"Sector Average ({tool_data['Category']}): {avg_safety:.1f}")
 
-# --- PAGE 3: MARKET EXPLORER ---
-elif page == "Market Explorer":
-    st.title("🌐 Strategic Landscape")
+# --- TAB 3: INVESTMENT STRATEGY ---
+with tabs[2]:
+    st.subheader("White-Space Discovery: Where should the Government invest?")
+    st.info("Showing sectors with high strategic value but low tool density.")
     
-    # 3D-style scatter plot for high-end visualization
-    fig_scatter = px.scatter(df.head(2000), 
-                            x="Innovation_Index", 
-                            y="Privacy_Score", 
-                            color="Category",
-                            size="Innovation_Index",
-                            hover_name="Name",
-                            title="Visualizing Innovation vs. Privacy Risk (Sample: 2000 Tools)")
-    st.plotly_chart(fig_scatter, use_container_width=True)
-with st.expander("💼 Strategic Consultant View"):
-    st.write("### Sector Recommendation")
-    high_risk_sectors = df.groupby('Category')['Privacy_Score'].mean().nlargest(3).index.tolist()
-    st.warning(f"ADVISORY: The sectors {', '.join(high_risk_sectors)} show elevated Risk Profiles. Procurement should require SOC2 compliance before deployment.")
-    
-    st.write("### Opportunity Map")
-    low_density_sectors = df['Category'].value_counts().nsmallest(5).index.tolist()
-    st.success(f"STRATEGY: Minimal competition detected in {', '.join(low_density_sectors)}. Ideal for R&D investment.")
+    low_density = df['Category'].value_counts().nsmallest(10).reset_index()
+    fig_invest = px.bar(low_density, x='count', y='Category', orientation='h',
+                       title="Under-served AI Markets (Investment Opportunities)",
+                       color='count', color_continuous_scale='Viridis')
+    st.plotly_chart(fig_invest, use_container_width=True)
