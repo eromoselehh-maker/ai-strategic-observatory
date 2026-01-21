@@ -57,16 +57,17 @@ if nav == "📈 Current Findings":
     with col_g:
         st.subheader("💡 Strategic Investment Gaps")
         sector_counts = df['Category'].value_counts()
-        gaps = sector_counts[sector_counts < (sector_counts.mean() / 2)].head(3)
+        avg_density = sector_counts.mean()
+        gaps = sector_counts[sector_counts < (avg_density / 2)].head(4)
         for sector, count in gaps.items():
-            st.markdown(f"<div class='advisory-card'><strong>{sector}</strong><br>Inventory: {count} Tools</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='advisory-card'><strong>{sector}</strong><br>Inventory: {count} Tools • Status: Strategic Gap</div>", unsafe_allow_html=True)
     with col_r:
         st.subheader("⚠️ Regulatory Hotspots")
-        hotspots = df.groupby('Category')['MIT_D4'].mean().sort_values(ascending=False).head(3)
+        hotspots = df.groupby('Category')['MIT_D4'].mean().sort_values(ascending=False).head(4)
         for sector, rate in hotspots.items():
-            st.markdown(f"<div class='advisory-card' style='border-left-color:red;'><strong>{sector}</strong><br>Risk Density: {rate:.1%}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='advisory-card' style='border-left-color:red;'><strong>{sector}</strong><br>Risk Density: {rate:.1%} • Status: High Watch</div>", unsafe_allow_html=True)
 
-# --- PAGE 2: ENTITY AUDIT (Now with BOTH APIs) ---
+# --- PAGE 2: ENTITY AUDIT ---
 elif nav == "🔍 Individual Audit":
     st.title("Individual Entity Intelligence")
     search_list = df if sector_focus == "Global Market" else df[df['Category'] == sector_focus]
@@ -81,9 +82,8 @@ elif nav == "🔍 Individual Audit":
             st.markdown("### 📋 Audit Profile")
             st.write(f"**Description:** {tool['Short Description']}")
             st.write(f"**MIT D4 (Privacy):** {'🔴 Flagged' if tool['MIT_D4'] else '🟢 Clear'}")
-            st.write(f"- **MIT D6 (Integrity):** {'🔴 Flagged' if tool['MIT_D6'] else '🟢 Clear'}")
+            st.write(f"**MIT D6 (Integrity):** {'🔴 Flagged' if tool['MIT_D6'] else '🟢 Clear'}")
             
-            # --- NEWS API INTEGRATION ---
             st.markdown("### 📡 Live Intelligence Feed")
             if NEWS_API_KEY:
                 try:
@@ -105,9 +105,35 @@ elif nav == "🔍 Individual Audit":
                 if quote:
                     st.metric(f"{ticker} Value", f"${quote.get('05. price')}", delta=quote.get('10. change percent'))
 
-# --- PAGE 3: GLOSSARY ---
+# --- PAGE 3: GOVERNANCE GLOSSARY (EXPANDED) ---
 elif nav == "📖 Governance Glossary":
-    st.title("Governance Framework")
-    st.markdown("""
-    **MIT D4 (Privacy):** Flagging unauthorized surveillance and data harvesting.  
-    **MIT D6 (Integrity):** Flag
+    st.title("Governance Framework & Taxonomy")
+    st.markdown("---")
+    
+    st.markdown("### MIT AI Risk Repository (Full Classification)")
+    st.write("This observatory cross-references entities against the 7 key domains of the MIT taxonomy.")
+    
+    g1, g2 = st.columns(2)
+    with g1:
+        st.markdown("""
+        **D1: System Safety** Malfunctions or exploits in AI logic leading to unintended harm.
+        
+        **D2: Socio-economic** Risks of market monopolization and labor displacement.
+        
+        **D3: Human-AI Interaction** Risks of over-reliance or loss of human agency.
+        
+        **D4: Data Privacy & Security** *Observatory Primary Metric:* Flagging surveillance and data harvesting.
+        """)
+    with g2:
+        st.markdown("""
+        **D5: AI Misuse** Intentional use of AI for criminal or malicious activities.
+        
+        **D6: Content Integrity** *Observatory Primary Metric:* Flagging deepfakes and synthetic media.
+        
+        **D7: Legal & Regulatory** Non-compliance with international laws (GDPR, EU AI Act).
+        """)
+    
+    st.markdown("---")
+    st.markdown("### Internal Observatory Metrics")
+    st.write("**Strategic Investment Gap (SIG):** Identifies sectors with low tool density for R&D prioritization.")
+    st.write("**Market Trust Signal (MTS):** Assesses corporate stability via real-time financial APIs.")
