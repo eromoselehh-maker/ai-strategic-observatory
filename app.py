@@ -1,76 +1,173 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
 
-# 1. ANALYTICAL FOUNDATION
-st.set_page_config(page_title="Forensic Audit | PHIL's Consulting", layout="wide")
+# 1. UI CONFIGURATION & DESIGNER STYLING
+st.set_page_config(page_title="AI Observatory", layout="wide", initial_sidebar_state="expanded")
 
-@st.cache_data
-def perform_forensic_analysis():
-    # Load raw data
-    df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
-    df = df.drop_duplicates(subset=['Name']).dropna(subset=['Category'])
-
-    # --- THE ANALYSIS ENGINE ---
-    # Define MIT Risk Domain Patterns
-    mit_patterns = {
-        'D2_Privacy': 'tracking|surveillance|biometric|facial recognition|data harvest',
-        'D4_Malicious': 'phishing|malware|exploit|hack|bypass|credential',
-        'D6_Integrity': 'deepfake|synthetic|generate|clone|manipulate|disinformation'
-    }
-
-    # Analyze and Score
-    for domain, pattern in mit_patterns.items():
-        df[domain] = df['Short Description'].str.contains(pattern, case=False, na=False)
-
-    # Calculate "Consultancy Risk Index" (CRI)
-    # Weighted: Privacy and Malicious use are higher threat levels than Content Integrity
-    df['CRI'] = (df['D2_Privacy'].astype(int) * 40) + \
-                 (df['D4_Malicious'].astype(int) * 50) + \
-                 (df['D6_Integrity'].astype(int) * 30)
+st.markdown("""
+    <style>
+    /* Global Styles */
+    .stApp { background-color: #FFFFFF; font-family: 'Inter', sans-serif; }
     
-    df['CRI'] = df['CRI'].clip(upper=100)
+    /* Executive Metric Cards */
+    .metric-card {
+        background-color: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        padding: 24px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .metric-value { font-size: 2.2rem; font-weight: 800; color: #1E293B; margin-bottom: 5px; }
+    .metric-label { font-size: 0.75rem; color: #64748B; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+
+    /* Advisory & Insights Styling */
+    .advisory-card {
+        background: #FFFFFF; border: 1px solid #E2E8F0;
+        padding: 18px; border-radius: 10px; margin-bottom: 12px;
+        border-left: 5px solid #3B82F6;
+    }
+    .risk-card { border-left: 5px solid #EF4444; }
+    .section-title { font-size: 1.4rem; font-weight: 700; color: #1E293B; margin-bottom: 20px; }
+    
+    /* Clean Sidebar */
+    section[data-testid="stSidebar"] { background-color: #F1F5F9; border-right: 1px solid #E2E8F0; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 2. DATA ENGINE (CLEANING & MIT MAPPING)
+@st.cache_data
+def load_and_scrub():
+    df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
+    df = df.drop_duplicates(subset=['Name']).dropna(subset=['Name'])
+    
+    # MIT RISK CLASSIFICATION LOGIC
+    # D4: Privacy (Surveillance/Data harvesting)
+    df['MIT_D4_Privacy'] = df['Short Description'].str.contains('privacy|tracking|data|surveillance|harvest', case=False, na=False)
+    # D6: Integrity (Deepfakes/Misinfo)
+    df['MIT_D6_Integrity'] = df['Short Description'].str.contains('fake|generate|synthetic|voice|media|manipulate', case=False, na=False)
     return df
 
-# Run the analysis
-df_analyzed = perform_forensic_analysis()
+df = load_and_scrub()
+AV_API_KEY = st.secrets.get("ALPHA_VANTAGE_KEY", "")
 
-# 2. UI RENDER (Based on Analysis Results)
-st.markdown("<h2 style='color:#38BDF8;'>🏛️ PHIL'S STRATEGIC OBSERVATORY</h2>", unsafe_allow_html=True)
-st.sidebar.header("Intelligence Modules")
-nav = st.sidebar.radio("Go to:", ["Executive Analysis", "MIT Framework Library"])
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.markdown("## 🏛️ AI OBSERVATORY")
+st.sidebar.caption("Government Strategic Oversight v4.0")
+nav = st.sidebar.radio("Observation Mode", ["📈 Current Findings", "🔍 Entity Audit", "📖 Governance Glossary"])
+st.sidebar.markdown("---")
+sector_focus = st.sidebar.selectbox("Sector Context", ["Global Market"] + sorted(df['Category'].unique().tolist()))
 
-if nav == "Executive Analysis":
-    # ANALYSIS RESULTS
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Assets Analyzed", f"{len(df_analyzed):,}")
-    c2.metric("Critical Privacy Threats", df_analyzed['D2_Privacy'].sum())
-    c3.metric("Systemic Integrity Risks", df_analyzed['D6_Integrity'].sum())
+# --- PAGE 1: CURRENT FINDINGS (The Homepage) ---
+if nav == "📈 Current Findings":
+    st.markdown("<h1 style='margin-bottom:0;'>Current Findings</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B;'>High-level summary of the global AI landscape and regulatory pressures.</p>", unsafe_allow_html=True)
+    
+    # Executive Metrics
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.markdown(f'<div class="metric-card"><div class="metric-value">{len(df):,}</div><div class="metric-label">Total Entities Monitored</div></div>', unsafe_allow_html=True)
+    with m2:
+        st.markdown(f'<div class="metric-card"><div class="metric-value">{df["MIT_D4_Privacy"].sum()}</div><div class="metric-label">MIT D4 Privacy Flags</div></div>', unsafe_allow_html=True)
+    with m3:
+        st.markdown(f'<div class="metric-card"><div class="metric-value">{df["MIT_D6_Integrity"].sum()}</div><div class="metric-label">MIT D6 Integrity Flags</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    col_gap, col_risk = st.columns(2)
+    
+    with col_gap:
+        st.markdown("<div class='section-title'>💡 Strategic Investment Gaps</div>", unsafe_allow_html=True)
+        st.write("Identified sectors with low technological density relative to market mean:")
+        sector_counts = df['Category'].value_counts()
+        avg_density = sector_counts.mean()
+        gaps = sector_counts[sector_counts < (avg_density / 2)].head(4)
+        for sector, count in gaps.items():
+            st.markdown(f"<div class='advisory-card'><strong>{sector}</strong><br><small>Inventory: {count} Tools • Strategic Priority: High</small></div>", unsafe_allow_html=True)
+            
+    with col_risk:
+        st.markdown("<div class='section-title'>⚠️ Regulatory Watchlist</div>", unsafe_allow_html=True)
+        st.write("Sectors exhibiting high concentrations of MIT Domain 4/6 alerts:")
+        hotspots = df.groupby('Category')['MIT_D4_Privacy'].mean().sort_values(ascending=False).head(4)
+        for sector, rate in hotspots.items():
+            st.markdown(f"<div class='advisory-card risk-card'><strong>{sector}</strong><br><small>MIT Risk Density: {rate:.1%} • Oversight Status: Critical</small></div>", unsafe_allow_html=True)
 
     st.markdown("---")
+    st.subheader("Market Composition Treemap")
+    fig = px.treemap(df.head(1000), path=['Category', 'Name'], values='MIT_D4_Privacy',
+                     color='MIT_D4_Privacy', color_continuous_scale='Blues')
+    fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=500)
+    st.plotly_chart(fig, use_container_width=True)
+
+# --- PAGE 2: ENTITY AUDIT ---
+elif nav == "🔍 Entity Audit":
+    st.markdown("<h1 style='margin-bottom:0;'>Individual Entity Audit</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B;'>Deep-dive investigation of specific technological assets.</p>", unsafe_allow_html=True)
     
-    # RISK VS VOLUME ANALYSIS
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.subheader("Sector Risk Concentration")
-        # Real Analysis: Grouping by category to see where the highest average risk lives
-        sector_risk = df_analyzed.groupby('Category')['CRI'].mean().sort_values(ascending=False).head(10).reset_index()
-        fig_risk = px.bar(sector_risk, x='CRI', y='Category', orientation='h', 
-                          color='CRI', color_continuous_scale='Reds', template='plotly_dark')
-        st.plotly_chart(fig_risk, use_container_width=True)
+    search_list = df if sector_focus == "Global Market" else df[df['Category'] == sector_focus]
+    target = st.selectbox("Select Target Entity:", [""] + sorted(search_list['Name'].unique().tolist()))
+    
+    if target:
+        tool = df[df['Name'] == target].iloc[0]
+        st.markdown(f"## {target}")
+        
+        ca, cb = st.columns(2)
+        with ca:
+            st.markdown("<div class='advisory-card'><strong>Technical Metadata</strong><br>"+tool['Short Description']+"</div>", unsafe_allow_html=True)
+            st.write("**MIT Risk Assessment:**")
+            st.write(f"- Privacy & Surveillance (D4): {'🔴 Flagged' if tool['MIT_D4_Privacy'] else '🟢 Minimal Signal'}")
+            st.write(f"- Content Integrity (D6): {'🔴 Flagged' if tool['MIT_D6_Integrity'] else '🟢 Minimal Signal'}")
+            
+        with cb:
+            st.markdown("<div class='advisory-card'><strong>📈 Market Trust Signal (Alpha Vantage)</strong></div>", unsafe_allow_html=True)
+            ticker = st.text_input("Enter Stock Ticker (e.g. MSFT, GOOGL, META):", "").upper()
+            
+            if ticker and AV_API_KEY:
+                try:
+                    q_url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={AV_API_KEY}"
+                    quote_data = requests.get(q_url).json().get('Global Quote', {})
+                    if quote_data:
+                        st.metric(f"{ticker} Current Valuation", f"${quote_data.get('05. price')}", delta=quote_data.get('10. change percent'))
+                        st.caption("Real-time financial signals assess corporate stability and long-term viability.")
+                    else:
+                        st.warning("Data not found for this ticker. Verify the symbol on Alpha Vantage.")
+                except:
+                    st.error("API Connection Error.")
+            else:
+                st.info("Input a parent corporation's stock ticker to analyze market confidence.")
 
-    with col_b:
-        st.subheader("Market Composition")
-        sector_counts = df_analyzed['Category'].value_counts().head(10).reset_index()
-        fig_pie = px.pie(sector_counts, names='index', values='Category', hole=0.5, template='plotly_dark')
-        st.plotly_chart(fig_pie, use_container_width=True)
+# --- PAGE 3: GOVERNANCE GLOSSARY (Full MIT Taxonomy) ---
+elif nav == "📖 Governance Glossary":
+    st.markdown("<h1 style='margin-bottom:0;'>Governance Glossary</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B;'>Definitions for the MIT AI Risk Repository Framework.</p>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    col_l, col_r = st.columns(2)
+    
+    with col_l:
+        st.subheader("Core MIT Risk Domains")
+        st.markdown("""
+        **D1: System Safety & Security** Malfunctions or exploits in AI logic leading to unintended damage or unauthorized access.
+        
+        **D2: Socio-economic Impact** Risks involving labor displacement, market monopolization, and the digital divide.
+        
+        **D4: Data Privacy (Monitored)** *Observatory Primary Metric:* Unauthorized surveillance, persistent tracking, and data-harvesting.
+        
+        **D6: Content Integrity (Monitored)** *Observatory Primary Metric:* Deepfakes, synthetic media, and identity impersonation risks.
+        """)
+        
+    with col_r:
+        st.subheader("Observatory Analytics")
+        st.markdown("""
+        **Strategic Investment Gap (SIG)** A quantitative identifier for sectors where technological density falls significantly below the market mean, indicating a vulnerability in domestic AI sovereignty.
+        
+        **Market Trust Signal (MTS)** A real-time financial health check using the **Alpha Vantage API**. It correlates equity performance with technological risk to determine 'corporate reliability.'
+        
+        **Regulatory Hotspot** Sectors with abnormal concentrations of MIT Domain alerts requiring priority oversight.
+        """)
 
-elif nav == "MIT Framework Library":
-    st.header("MIT AI Risk Taxonomy")
-    # THE GLOSSARY
-    with st.expander("📘 Domain 2: Privacy & Security"):
-        st.write("Risks related to persistent tracking and unauthorized surveillance.")
-    with st.expander("📘 Domain 4: Malicious Use"):
-        st.write("Intentional use of AI for cyber-attacks or societal disruption.")
-    with st.expander("📘 Domain 6: Socioeconomic Harms"):
-        st.write("Issues including deepfakes, labor displacement, and environmental impact.")
+    st.markdown("---")
+    st.info("The AI Observatory is built upon the MIT AI Risk Repository (v4.0) – a comprehensive taxonomy of 700+ risks identified across 7 distinct domains.")
