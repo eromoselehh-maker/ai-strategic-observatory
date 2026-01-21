@@ -1,84 +1,123 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
 
-# 1. Page Config - Using a standard "Management" layout
-st.set_page_config(page_title="AI Strategic Intelligence", layout="wide")
+# 1. INSTITUTIONAL CONFIGURATION
+st.set_page_config(page_title="AI Observatory", layout="wide")
 
-# CSS to make it look like a high-end SaaS product
+# Professional UI Styling
 st.markdown("""
     <style>
-    .stApp { background-color: #f9fbfd; }
-    [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e6e9ef; }
-    .card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e6e9ef; }
+    .stApp { background-color: #ffffff; color: #1a1a1a; }
+    .mit-card { 
+        background-color: #f8f9fa; 
+        padding: 20px; 
+        border-radius: 8px; 
+        border-left: 6px solid #1c3d5a;
+        margin-bottom: 25px;
+    }
+    .metric-container {
+        background-color: #ffffff;
+        border: 1px solid #e1e4e8;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
-def load_clean_data():
+def load_scrubbed_data():
+    # Load and Clean
     df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
-    df = df.drop_duplicates(subset=['Name']).fillna("Unclassified")
-    # Simplify Categories to keep it clean
-    df['Category'] = df['Category'].str.title()
-    # Create a "Strategic Risk Score"
-    df['Risk_Score'] = df['Short Description'].str.contains('data|privacy|tracking', case=False).map({True: "🔴 High", False: "🟢 Low"})
+    df = df.drop_duplicates(subset=['Name']).dropna(subset=['Name'])
+    df['Short Description'] = df['Short Description'].fillna("Metadata review pending.")
+    
+    # MIT RISK MAPPING (Based on MIT Domain Taxonomy)
+    # D4: Data Privacy | D6: Misinformation
+    df['MIT_Privacy_Alert'] = df['Short Description'].str.contains('privacy|tracking|data|secure', case=False)
+    df['MIT_Integrity_Alert'] = df['Short Description'].str.contains('fake|generate|synthetic|voice', case=False)
     return df
 
-df = load_clean_data()
+df = load_scrubbed_data()
+AV_API_KEY = st.secrets.get("ALPHA_VANTAGE_KEY", "")
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.title("🔭 GovIntel")
-st.sidebar.markdown("---")
-selected_sector = st.sidebar.selectbox("1. Filter by Sector", ["All Sectors"] + sorted(df['Category'].unique().tolist()))
-search_name = st.sidebar.text_input("2. Search Tool Name", "")
+# --- HEADER & METHODOLOGY ---
+st.title("🏛️ AI Observatory")
+st.markdown("""
+<div class="mit-card">
+    <strong>Strategic Methodology:</strong> This platform audits 16,000+ entities by cross-referencing 
+    technological metadata against the <strong>MIT AI Risk Repository (v4.0)</strong>. 
+    Focus is placed on Domain 4 (Privacy) and Domain 6 (Integrity) to ensure regulatory compliance.
+</div>
+""", unsafe_allow_html=True)
 
-# Filter Logic
-filtered_df = df if selected_sector == "All Sectors" else df[df['Category'] == selected_sector]
-if search_name:
-    filtered_df = filtered_df[filtered_df['Name'].str.contains(search_name, case=False)]
+# --- SIDEBAR CONTROL ---
+st.sidebar.title("Oversight Controls")
+view_mode = st.sidebar.radio("Observation Level:", ["Sectoral Landscape", "Individual Entity Audit"])
+selected_sector = st.sidebar.selectbox("Filter by Sector:", ["All"] + sorted(df['Category'].unique().tolist()))
 
-# --- MAIN DASHBOARD ---
-st.title("Strategic AI Observatory")
-st.markdown(f"Currently auditing **{len(filtered_df):,}** tools within the **{selected_sector}** ecosystem.")
+# Filtering logic
+filtered_df = df if selected_sector == "All" else df[df['Category'] == selected_sector]
 
-# 1. THE PULSE (Metrics)
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("Total Tool Volume", f"{len(filtered_df):,}")
-with col2:
-    high_risk_count = len(filtered_df[filtered_df['Risk_Score'] == "🔴 High"])
-    st.metric("High-Risk Entities", high_risk_count, delta_color="inverse")
-with col3:
-    st.metric("Sector Diversity", filtered_df['Category'].nunique() if selected_sector == "All Sectors" else "Single Sector")
-
-st.markdown("---")
-
-# 2. THE LANDSCAPE (Visuals)
-left_col, right_col = st.columns([2, 1])
-
-with left_col:
-    st.subheader("Market Distribution")
-    # A simple, horizontal bar chart is the easiest to read
-    top_cats = filtered_df['Category'].value_counts().head(10).reset_index()
-    fig = px.bar(top_cats, x='count', y='Category', orientation='h', 
-                 color_discrete_sequence=['#1f77b4'], template="plotly_white")
-    fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=0, r=0, t=30, b=0))
+# --- VIEW 1: MARKET LANDSCAPE ---
+if view_mode == "Sectoral Landscape":
+    st.subheader(f"Market Analysis: {selected_sector}")
+    
+    m1, m2, m3 = st.columns(3)
+    with m1: st.metric("Total Entities", f"{len(filtered_df):,}")
+    with m2: st.metric("MIT Privacy Flags", filtered_df['MIT_Privacy_Alert'].sum())
+    with m3: st.metric("MIT Integrity Flags", filtered_df['MIT_Integrity_Alert'].sum())
+    
+    st.markdown("---")
+    
+    # Clean Bar Chart
+    top_tools = filtered_df['Category'].value_counts().head(10).reset_index()
+    fig = px.bar(top_tools, x='count', y='Category', orientation='h', 
+                 title="Sector Composition", color_discrete_sequence=['#1c3d5a'])
+    fig.update_layout(plot_bgcolor='white', yaxis={'categoryorder':'total ascending'})
     st.plotly_chart(fig, use_container_width=True)
 
-with right_col:
-    st.subheader("Risk Breakdown")
-    risk_pie = px.pie(filtered_df, names='Risk_Score', hole=0.7, 
-                      color='Risk_Score', color_discrete_map={"🔴 High":"#ff4b4b", "🟢 Low":"#1f77b4"})
-    st.plotly_chart(risk_pie, use_container_width=True)
-
-# 3. THE DOSSIER (Individual Records)
-st.markdown("---")
-st.subheader("Individual Intelligence Records")
-st.dataframe(filtered_df[['Name', 'Category', 'Risk_Score', 'Short Description']].sort_values('Risk_Score', ascending=False), 
-             use_container_width=True, hide_index=True)
-
-# 4. EXPORT BUTTON (The "Pro" Feature)
-st.download_button("Export Intelligence Report (CSV)", 
-                   filtered_df.to_csv(index=False), 
-                   "ai_intelligence_report.csv", 
-                   "text/csv")
+# --- VIEW 2: INDIVIDUAL AUDIT (THE DEEP-DIVE) ---
+else:
+    st.subheader("Individual Entity Intelligence & Market Signal")
+    search_tool = st.selectbox("Search Entity Database:", [""] + sorted(filtered_df['Name'].unique().tolist()))
+    
+    if search_tool:
+        tool = df[df['Name'] == search_tool].iloc[0]
+        
+        col_info, col_market = st.columns([1, 1])
+        
+        with col_info:
+            st.markdown(f"### Audit Dossier: {search_tool}")
+            st.write(f"**Classification:** {tool['Category']}")
+            st.write(f"**Description:** {tool['Short Description']}")
+            st.markdown(f"""
+            **MIT Risk Profile:**
+            - Privacy (D4): {'🔴 High Risk' if tool['MIT_Privacy_Alert'] else '🟢 Compliant'}
+            - Integrity (D6): {'🔴 High Alert' if tool['MIT_Integrity_Alert'] else '🟢 Compliant'}
+            """)
+            
+        with col_market:
+            st.markdown("### 📈 Market Trust Signal")
+            if AV_API_KEY:
+                # Alpha Vantage Ticker Search
+                s_url = f"https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={search_tool}&apikey={AV_API_KEY}"
+                matches = requests.get(s_url).json().get('bestMatches', [])
+                
+                if matches:
+                    ticker = matches[0]['1. symbol']
+                    q_url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={AV_API_KEY}"
+                    quote = requests.get(q_url).json().get('Global Quote', {})
+                    
+                    if quote:
+                        st.metric(label=f"Parent Entity: {matches[0]['2. name']} ({ticker})", 
+                                  value=f"${quote.get('05. price', 'N/A')}", 
+                                  delta=quote.get('10. change percent', '0%'))
+                    else:
+                        st.write("Market data currently unavailable for this ticker.")
+                else:
+                    st.write("Entity is currently private or not listed on public exchanges.")
+            else:
+                st.warning("Alpha Vantage API Key not detected in System Secrets.")
