@@ -169,3 +169,21 @@ fig_donut = px.pie(sector_counts, names='Sector', values='Count', hole=0.6,
 # This line makes it 'pop' on hover:
 fig_donut.update_traces(hovertemplate="<b>%{label}</b><br>Volume: %{value}<br>Click to isolate")
 fig_donut.update_layout(hovermode="closest", showlegend=False, paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=10,b=10,l=10,r=10))
+# Add this to your "Deep-Dive Audit" section
+st.markdown("---")
+st.markdown("<p class='metric-label'>Forensic Positioning Matrix</p>", unsafe_allow_html=True)
+
+# Create mock 'Utility' score for visualization
+df['Utility_Score'] = df['Short Description'].str.len() / 5 # Placeholder logic
+df['Utility_Score'] = df['Utility_Score'].clip(upper=100)
+
+fig_scatter = px.scatter(df.head(200), x="Utility_Score", y="Risk_Score",
+                 color="Risk_Score", size="Utility_Score",
+                 hover_name="Name", color_continuous_scale='Reds',
+                 labels={'Utility_Score': 'Innovation Index', 'Risk_Score': 'MIT Risk Factor'})
+
+# Add the 'Danger Zone' shading
+fig_scatter.add_hrect(y0=80, y1=100, line_width=0, fillcolor="red", opacity=0.1)
+fig_scatter.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', template='plotly_dark')
+
+st.plotly_chart(fig_scatter, use_container_width=True)
