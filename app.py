@@ -2,85 +2,98 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. Page Configuration for a Professional Look
-st.set_page_config(page_title="AI Risk Intelligence Suite", layout="wide", initial_sidebar_state="expanded")
+# 1. Page Configuration
+st.set_page_config(page_title="AI Risk Intelligence Suite", layout="wide")
 
-# Custom CSS to make it look "Premium"
+# Custom Styling
 st.markdown("""
     <style>
-    .main { background-color: #f5f7f9; }
-    .stMetric { background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .main { background-color: #f8f9fa; }
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        border-radius: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
+    # Load the data
     df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
     df = df.drop_duplicates(subset=['Name'])
-    # Advanced MIT Risk Scoring (0 to 100)
-    df['Privacy_Score'] = df['Short Description'].str.contains('privacy|data|tracking', case=False).astype(int) * 85
-    df['Ethics_Score'] = df['Short Description'].str.contains('bias|ethics|fairness', case=False).astype(int) * 70
-    df['Innovation_Index'] = df['Short Description'].str.len() / 10 # Simulated metric
+    
+    # CRITICAL FIX: Fill empty descriptions with text so the math doesn't break
+    df['Short Description'] = df['Short Description'].fillna('No description available')
+    
+    # MIT Risk Scoring - Using a safer method for 16k rows
+    df['Privacy_Score'] = df['Short Description'].str.contains('privacy|data|tracking|security', case=False, na=False).astype(int) * 85
+    df['Ethics_Score'] = df['Short Description'].str.contains('bias|ethics|fairness|discrimination', case=False, na=False).astype(int) * 70
+    
+    # Create a simulated Innovation Index for visualization
+    df['Innovation_Index'] = df['Short Description'].apply(len) / 10
     return df
 
-df = load_data()
+# Initialize Data
+try:
+    df = load_data()
+except Exception as e:
+    st.error(f"Error loading data: {e}")
+    st.stop()
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.title("🔭 AI Observatory v2.1")
-st.sidebar.markdown("Strategic Intelligence Platform")
-page = st.sidebar.radio("Navigate to:", ["Executive Overview", "MIT Risk Laboratory", "Global Market Explorer"])
+# --- SIDEBAR ---
+st.sidebar.title("🔭 Intelligence Suite")
+page = st.sidebar.radio("Navigate to:", ["Executive Overview", "MIT Risk Laboratory", "Market Explorer"])
 
 # --- PAGE 1: EXECUTIVE OVERVIEW ---
 if page == "Executive Overview":
     st.title("🚀 Global AI Market Intelligence")
-    st.info("Strategic summary of the 16,000+ tool ecosystem.")
     
-    col1, col2, col3, col4 = st.columns(4)
-    with col1: st.metric("Total Ecosystem Size", f"{len(df):,}")
-    with col2: st.metric("Market Diversity", f"{df['Category'].nunique()} Sectors")
-    with col3: st.metric("High Privacy Risk", f"{len(df[df['Privacy_Score'] > 0])}")
-    with col4: st.metric("Ethics/Bias Alert", f"{len(df[df['Ethics_Score'] > 0])}")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Ecosystem", f"{len(df):,}")
+    m2.metric("Market Sectors", df['Category'].nunique())
+    m3.metric("Privacy Flags", len(df[df['Privacy_Score'] > 0]))
+    m4.metric("Ethics Flags", len(df[df['Ethics_Score'] > 0]))
 
     st.markdown("---")
     
-    # Advanced Plotly Chart (Much prettier than standard bar charts)
-    st.subheader("Industry Distribution (Top 15 Sectors)")
+    st.subheader("Industry Sector Dominance")
     top_cats = df['Category'].value_counts().head(15).reset_index()
-    fig = px.treemap(top_cats, path=['Category'], values='count', color='count', 
-                     color_continuous_scale='RdBu')
+    top_cats.columns = ['Sector', 'Count']
+    
+    # Treemap is much more "premium" looking for a video demo
+    fig = px.treemap(top_cats, path=['Sector'], values='Count', 
+                     color='Count', color_continuous_scale='Blues')
     st.plotly_chart(fig, use_container_width=True)
 
 # --- PAGE 2: MIT RISK LABORATORY ---
 elif page == "MIT Risk Laboratory":
     st.title("⚖️ MIT Risk Audit Lab")
-    st.write("Cross-referencing the AI ToolBuzz dataset with MIT AI Risk Domains.")
     
-    # Interactive Filtering
-    risk_type = st.selectbox("Select Risk Domain to Audit", ["Privacy & Surveillance", "Algorithmic Bias"])
+    tab1, tab2 = st.tabs(["Sector Analysis", "Tool-Level Search"])
     
-    col_a, col_b = st.columns([1, 2])
-    
-    with col_a:
-        st.write("### Sector Sensitivity")
-        risk_col = 'Privacy_Score' if risk_type == "Privacy & Surveillance" else 'Ethics_Score'
-        sector_risk = df.groupby('Category')[risk_col].mean().sort_values(ascending=False).head(10)
-        st.bar_chart(sector_risk)
+    with tab1:
+        st.write("### Average Risk by Category")
+        risk_chart = df.groupby('Category')[['Privacy_Score', 'Ethics_Score']].mean().sort_values('Privacy_Score', ascending=False).head(10)
+        st.bar_chart(risk_chart)
         
-    with col_b:
-        st.write("### Tool-Level Investigation")
-        search_query = st.text_input("Search for a specific tool to audit (e.g., 'ChatGPT')")
-        if search_query:
-            result = df[df['Name'].str.contains(search_query, case=False)]
-            st.table(result[['Name', 'Category', 'Privacy_Score', 'Ethics_Score']].head(5))
+    with tab2:
+        search = st.text_input("Enter Tool Name (e.g., 'Copy.ai')")
+        if search:
+            results = df[df['Name'].str.contains(search, case=False, na=False)]
+            st.dataframe(results[['Name', 'Category', 'Privacy_Score', 'Ethics_Score']])
 
-# --- PAGE 3: GLOBAL MARKET EXPLORER ---
-elif page == "Global Market Explorer":
-    st.title("🌐 Market Landscape")
+# --- PAGE 3: MARKET EXPLORER ---
+elif page == "Market Explorer":
+    st.title("🌐 Strategic Landscape")
     
-    # A 3D Scatter Plot feels very "high-tech" for a video
-    st.subheader("Strategic Positioning: Innovation vs. Risk")
-    fig2 = px.scatter(df.head(1000), x="Innovation_Index", y="Privacy_Score", 
-                     color="Category", hover_name="Name", 
-                     title="Visualizing the First 1,000 Tools",
-                     log_x=True, size_max=60)
-    st.plotly_chart(fig2, use_container_width=True)
+    # 3D-style scatter plot for high-end visualization
+    fig_scatter = px.scatter(df.head(2000), 
+                            x="Innovation_Index", 
+                            y="Privacy_Score", 
+                            color="Category",
+                            size="Innovation_Index",
+                            hover_name="Name",
+                            title="Visualizing Innovation vs. Privacy Risk (Sample: 2000 Tools)")
+    st.plotly_chart(fig_scatter, use_container_width=True)
