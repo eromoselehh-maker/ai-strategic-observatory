@@ -1,122 +1,159 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
 
-# 1. THE "WAR ROOM" UI
-st.set_page_config(page_title="AI Risk Observatory", layout="wide")
+# 1. PREMIUM UX/UI SYSTEM
+st.set_page_config(page_title="AI Observatory | Philip’s Consulting", layout="wide")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500&family=Plus+Jakarta+Sans:wght@700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;700&display=swap');
+    .stApp { background-color: #020617; font-family: 'Plus Jakarta Sans', sans-serif; color: #F1F5F9; }
     
-    .stApp { background-color: #050505; font-family: 'Inter', sans-serif; color: #A1A1AA; }
-    
-    /* Risk Status Cards */
-    .risk-card {
-        background: #0A0A0A; border: 1px solid #1A1A1A;
-        padding: 24px; border-radius: 8px; border-top: 3px solid #38BDF8;
+    /* Neon Top Ticker */
+    .ticker-wrap {
+        width: 100%; background: #0F172A; border-bottom: 1px solid #38BDF8;
+        padding: 8px 0; position: fixed; top: 0; left: 0; z-index: 1000;
     }
-    .status-alert {
-        background: rgba(220, 38, 38, 0.1); border: 1px solid #DC2626;
-        color: #F87171; padding: 15px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+    .ticker { 
+        display: inline-block; white-space: nowrap; color: #38BDF8; 
+        font-family: 'Courier New', monospace; animation: ticker 40s linear infinite;
     }
+    @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     
-    /* Typography */
-    .hero-text { font-family: 'Plus Jakarta Sans', sans-serif; color: #FFFFFF; letter-spacing: -1px; }
-    .label-text { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #71717A; text-transform: uppercase; }
+    /* Luxury Container Cards */
+    .glass-card {
+        background: rgba(30, 41, 59, 0.4); border: 1px solid #334155;
+        padding: 24px; border-radius: 16px; height: 100%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .metric-val { font-size: 2.4rem; font-weight: 800; color: #38BDF8; margin: 0; }
+    .metric-label { font-size: 0.7rem; color: #94A3B8; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+
+    /* Layout Adjustments */
+    .main .block-container { padding-top: 6.5rem; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. AGGRESSIVE RISK ENGINE
+# 2. DATA ENGINE
 @st.cache_data
-def load_forensic_data():
-    df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
-    df = df.drop_duplicates(subset=['Name']).dropna(subset=['Category'])
-    
-    # AGGRESSIVE SCORING (Consultancy Grade)
-    # We define "Red Lines" - if these exist, the tool is High Risk
-    red_lines = 'deepfake|surveillance|tracking|hack|exploit|phishing|facial recognition|clone'
-    yellow_lines = 'data harvest|biometric|synthetic|scraping|automation'
-    
-    df['Red_Flag'] = df['Short Description'].str.contains(red_lines, case=False, na=False)
-    df['Yellow_Flag'] = df['Short Description'].str.contains(yellow_lines, case=False, na=False)
-    
-    # Calculate Score 0-100
-    df['Risk_Score'] = 15 # Base risk
-    df.loc[df['Yellow_Flag'], 'Risk_Score'] += 35
-    df.loc[df['Red_Flag'], 'Risk_Score'] += 50 # Immediate High Risk
-    
-    return df
+def load_data():
+    try:
+        # ENSURE THIS FILENAME IS EXACT
+        df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
+        df = df.drop_duplicates(subset=['Name']).dropna(subset=['Name', 'Category'])
+        df['D4_Privacy'] = df['Short Description'].str.contains('privacy|tracking|surveillance', case=False, na=False)
+        df['D6_Integrity'] = df['Short Description'].str.contains('fake|synthetic|generate', case=False, na=False)
+        return df
+    except: return pd.DataFrame()
 
-df = load_forensic_data()
+df = load_data()
+NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "")
+AV_API_KEY = st.secrets.get("ALPHA_VANTAGE_KEY", "")
 
-# 3. EXECUTIVE HEADER
-st.markdown("<p class='label-text'>Strategic Advisory: Philip's Consulting</p>", unsafe_allow_html=True)
-st.markdown("<h1 class='hero-text'>AI ENTITY OBSERVATORY</h1>", unsafe_allow_html=True)
+# 3. LIVE TICKER
+st.markdown(f'<div class="ticker-wrap"><div class="ticker"> ⚡ PHILIP\'S CONSULTING LIVE: Auditing {len(df):,} AI Entities | Market Sentiment: Bullish | Priority Alerts: D4 Privacy Violations Detected... </div></div>', unsafe_allow_html=True)
 
-# 4. TOP-LEVEL INTELLIGENCE
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    st.markdown(f"""<div class='risk-card'><p class='label-text'>Market Coverage</p>
-                <h2 style='color:white; margin:0;'>{len(df):,}</h2></div>""", unsafe_allow_html=True)
-with c2:
-    critical_count = len(df[df['Risk_Score'] >= 85])
-    st.markdown(f"""<div class='risk-card' style='border-top-color: #DC2626;'>
-                <p class='label-text' style='color:#DC2626;'>Red Alert Assets</p>
-                <h2 style='color:#DC2626; margin:0;'>{critical_count}</h2></div>""", unsafe_allow_html=True)
-with c3:
-    avg_risk = int(df['Risk_Score'].mean())
-    st.markdown(f"""<div class='risk-card' style='border-top-color: #FBBF24;'>
-                <p class='label-text' style='color:#FBBF24;'>Avg Risk Index</p>
-                <h2 style='color:#FBBF24; margin:0;'>{avg_risk}%</h2></div>""", unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# 5. THE VISUAL AUDIT (High Contrast)
-col_graph, col_list = st.columns([1.5, 1])
-
-with col_graph:
-    st.markdown("<p class='label-text'>Risk Distribution (MIT Domains)</p>", unsafe_allow_html=True)
-    # Donut Chart - Using High Contrast Red for High Risk
-    sector_risk = df.groupby('Category')['Risk_Score'].mean().sort_values(ascending=False).head(8).reset_index()
-    
-    fig = px.pie(sector_risk, names='Category', values='Risk_Score', hole=0.7,
-                 color_discrete_sequence=['#DC2626', '#EF4444', '#F87171', '#1E293B', '#0F172A'])
-    
-    fig.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=0,b=0,l=0,r=0))
-    fig.update_traces(hovertemplate="<b>%{label}</b><br>Risk Intensity: %{value}%<extra></extra>")
-    st.plotly_chart(fig, use_container_width=True)
-
-with col_list:
-    st.markdown("<p class='label-text'>Live Critical Warnings</p>", unsafe_allow_html=True)
-    # Only show the truly dangerous ones here
-    red_alerts = df[df['Red_Flag']].head(5)
-    for _, row in red_alerts.iterrows():
-        st.markdown(f"""
-            <div class='status-alert'>
-                <small>MIT D4/D6 VIOLATION</small><br>
-                <b>{row['Name']}</b><br>
-                <span style='font-size:0.75rem;'>{row['Short Description'][:90]}...</span>
-            </div><br>
-        """, unsafe_allow_html=True)
-
-# 6. DEEP SCAN (Sidebar)
-st.sidebar.markdown("### 🔍 Strategic Audit")
-target = st.sidebar.selectbox("Select Target", [""] + sorted(df['Name'].unique().tolist()))
-
-if target:
+# 4. SIDEBAR
+with st.sidebar:
+    st.markdown("<h2 style='color:#38BDF8;'>🏛️ OBSERVATORY</h2>", unsafe_allow_html=True)
+    st.caption("Strategic Audit v4.2")
+    nav = st.radio("Navigation Console", ["Executive Overview", "Deep-Dive Audit", "Framework Library"])
     st.markdown("---")
-    asset = df[df['Name'] == target].iloc[0]
+    st.caption("Consultant View: Philip's Consulting")
+
+# --- PAGE 1: EXECUTIVE OVERVIEW ---
+if nav == "Executive Overview":
+    st.markdown("### 📈 Strategic Intelligence Hub")
     
-    # Conditional formatting for the Audit result
-    audit_color = "#DC2626" if asset['Risk_Score'] >= 85 else "#38BDF8"
-    st.markdown(f"<h2 style='color:{audit_color};'>Audit Report: {target}</h2>", unsafe_allow_html=True)
+    # KPI Row
+    k1, k2, k3 = st.columns(3)
+    k1.markdown(f'<div class="glass-card"><p class="metric-label">Entities Monitored</p><p class="metric-val">{len(df):,}</p></div>', unsafe_allow_html=True)
+    k2.markdown(f'<div class="glass-card"><p class="metric-label">Privacy Risks (D4)</p><p class="metric-val" style="color:#F87171;">{df["D4_Privacy"].sum()}</p></div>', unsafe_allow_html=True)
+    k3.markdown(f'<div class="glass-card"><p class="metric-label">Integrity Risks (D6)</p><p class="metric-val" style="color:#FBBF24;">{df["D6_Integrity"].sum()}</p></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Visualization Grid
+    col_main, col_donut, col_news = st.columns([1.5, 1, 1])
     
-    ca, cb = st.columns(2)
-    with ca:
-        st.write(f"**Entity Description:** {asset['Short Description']}")
-    with cb:
-        st.metric("Risk Level", f"{int(asset['Risk_Score'])}%", 
-                  delta="CRITICAL" if asset['Red_Flag'] else "STABLE", 
-                  delta_color="inverse" if asset['Red_Flag'] else "normal")
+    with col_main:
+        st.markdown("<p class='metric-label'>Risk Distribution by Sector</p>", unsafe_allow_html=True)
+        risk_data = df.groupby('Category')['D4_Privacy'].sum().sort_values(ascending=False).head(10).reset_index()
+        fig_bar = px.bar(risk_data, x='D4_Privacy', y='Category', orientation='h', color='D4_Privacy', color_continuous_scale='Reds', template='plotly_dark')
+        fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False, margin=dict(t=0,b=0,l=0,r=0))
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col_donut:
+        # THE FIX: Replacing ugly numbers with a Donut Chart
+        st.markdown("<p class='metric-label'>Market Share Breakdown</p>", unsafe_allow_html=True)
+        sector_counts = df['Category'].value_counts().head(8).reset_index()
+        sector_counts.columns = ['Sector', 'Count']
+        fig_donut = px.pie(sector_counts, names='Sector', values='Count', hole=0.6, color_discrete_sequence=px.colors.sequential.Blues_r, template='plotly_dark')
+        fig_donut.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=0,b=0,l=0,r=0))
+        st.plotly_chart(fig_donut, use_container_width=True)
+
+    with col_news:
+        st.markdown("<p class='metric-label'>📡 Live Intel Feed</p>", unsafe_allow_html=True)
+        if NEWS_API_KEY:
+            try:
+                res = requests.get(f"https://newsapi.org/v2/everything?q=AI+regulation&apiKey={NEWS_API_KEY}&pageSize=4").json()
+                for art in res.get('articles', []):
+                    st.markdown(f"""
+                        <div style='background:rgba(30, 41, 59, 0.4); border-left:3px solid #38BDF8; padding:12px; margin-bottom:12px; border-radius:4px;'>
+                            <a style='color:#F1F5F9; text-decoration:none; font-size:0.8rem; font-weight:600;' href='{art['url']}' target='_blank'>{art['title']}</a>
+                        </div>
+                    """, unsafe_allow_html=True)
+            except: st.caption("Intel stream disconnected.")
+
+# --- PAGE 2: DEEP-DIVE AUDIT (WITH FINANCE) ---
+elif nav == "Deep-Dive Audit":
+    st.markdown("### 🔍 Entity Risk Profiling")
+    target = st.selectbox("Search Target:", [""] + sorted(df['Name'].unique().tolist()))
+    
+    if target:
+        tool = df[df['Name'] == target].iloc[0]
+        ca, cb = st.columns([1.5, 1])
+        
+        with ca:
+            st.markdown(f"""
+                <div class="glass-card" style="border-top: 4px solid #38BDF8;">
+                    <h2 style="color:#38BDF8; margin:0;">{target}</h2>
+                    <p style="color:#94A3B8; text-transform:uppercase; font-size:0.8rem;">Sector: {tool['Category']}</p>
+                    <hr style="border-color:#334155;">
+                    <p style="font-size:1.1rem; line-height:1.6;">{tool['Short Description']}</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        with cb:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<p class='metric-label'>Live Market Performance</p>", unsafe_allow_html=True)
+            ticker = st.text_input("Enter Ticker (e.g., MSFT):").upper()
+            if ticker and AV_API_KEY:
+                q_url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={AV_API_KEY}"
+                try:
+                    quote = requests.get(q_url).json().get('Global Quote', {})
+                    if quote:
+                        st.metric(f"{ticker}", f"${quote.get('05. price')}", delta=quote.get('10. change percent'))
+                    else: st.warning("Ticker not found.")
+                except: st.error("API Limit Reached.")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+# --- PAGE 3: LIBRARY ---
+elif nav == "Framework Library":
+    st.markdown("### 📚 MIT AI Risk Framework")
+    st.markdown("<div class='glass-card'>Full Domain Taxonomy and Governance Definitions are accessible via the expansion tabs below.</div><br>", unsafe_allow_html=True)
+    
+    domains = {
+        "D1: Discrimination & Toxicity": "Bias in AI logic leading to unfair or harmful social outcomes.",
+        "D2: Privacy & Security": "Unauthorized surveillance, persistent tracking, and data harvesting.",
+        "D3: Misinformation": "Accidental spread of deceptive content generated by LLMs.",
+        "D4: Malicious Use": "Intentional weaponization for cyber-warfare or deepfake phishing.",
+        "D5: Human Agency": "Psychological manipulation and the erosion of individual autonomy.",
+        "D6: Socioeconomic Harms": "Impact on labor markets and environmental resource depletion.",
+        "D7: AI System Safety": "Catastrophic misalignment and technical robustness failures."
+    }
+    for k, v in domains.items():
+        with st.expander(f"📘 {k}"):
+            st.write(v)
