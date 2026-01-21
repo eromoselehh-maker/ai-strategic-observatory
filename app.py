@@ -97,3 +97,11 @@ elif page == "Market Explorer":
                             hover_name="Name",
                             title="Visualizing Innovation vs. Privacy Risk (Sample: 2000 Tools)")
     st.plotly_chart(fig_scatter, use_container_width=True)
+with st.expander("💼 Strategic Consultant View"):
+    st.write("### Sector Recommendation")
+    high_risk_sectors = df.groupby('Category')['Privacy_Score'].mean().nlargest(3).index.tolist()
+    st.warning(f"ADVISORY: The sectors {', '.join(high_risk_sectors)} show elevated Risk Profiles. Procurement should require SOC2 compliance before deployment.")
+    
+    st.write("### Opportunity Map")
+    low_density_sectors = df['Category'].value_counts().nsmallest(5).index.tolist()
+    st.success(f"STRATEGY: Minimal competition detected in {', '.join(low_density_sectors)}. Ideal for R&D investment.")
