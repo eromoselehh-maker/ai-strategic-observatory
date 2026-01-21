@@ -1,20 +1,37 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
-# 1. THE ARCHITECTURE: Professional UI
-st.set_page_config(page_title="GovIntel: AI Strategic Observatory", layout="wide")
+# 1. DESIGNER SETTINGS: Institutional Clean
+st.set_page_config(page_title="AI Strategic Intelligence", layout="wide")
 
-# Custom CSS for a "Security Operations Center" Look
+# Custom CSS for Professional Typography and Spacing
 st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; color: white; }
-    div[data-testid="stMetricValue"] { color: #00d4ff; font-family: 'Courier New', monospace; }
-    .report-card { 
-        background-color: #1a1c24; 
-        padding: 20px; 
-        border-radius: 10px; 
-        border-left: 5px solid #00d4ff;
+    /* Main background to clean white */
+    .stApp { background-color: #FFFFFF; color: #262730; }
+    
+    /* Metric Cards Styling */
+    div[data-testid="stMetricValue"] { 
+        color: #1f77b4; 
+        font-weight: 700; 
+        font-size: 2.2rem !important;
+    }
+    
+    /* Custom Card Design for Tool Audit */
+    .audit-card {
+        background-color: #F8F9FB;
+        border: 1px solid #E6E9EF;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background-color: #F0F2F6;
+        border-right: 1px solid #E6E9EF;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -22,8 +39,8 @@ st.markdown("""
 @st.cache_data
 def load_data():
     df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
-    df = df.drop_duplicates(subset=['Name']).fillna("N/A")
-    # MIT Risk Heuristics
+    df = df.drop_duplicates(subset=['Name']).fillna("Information Pending")
+    # MIT Risk Logic
     df['Privacy_Flag'] = df['Short Description'].str.contains('data|privacy|tracking|secure', case=False)
     df['Ethics_Flag'] = df['Short Description'].str.contains('bias|ethics|fairness|hiring', case=False)
     df['Safety_Score'] = 100 - (df['Privacy_Flag'].astype(int)*40 + df['Ethics_Flag'].astype(int)*40)
@@ -31,61 +48,71 @@ def load_data():
 
 df = load_data()
 
-# --- HEADER ---
-st.title("🔭 GovIntel | AI Strategic Observatory")
-st.write("OFFICIAL USE ONLY | National AI Investment & Risk Dashboard")
+# --- HEADER SECTION ---
+st.title("🔭 AI Strategic Observatory")
+st.caption("Strategic Audit & Investment Planning Portal | v2.4")
+st.markdown("---")
 
-# --- NAVIGATION ---
-tabs = st.tabs(["📊 National Overview", "🔍 Tool Intelligence Audit", "💰 Investment Strategy"])
+# --- EXECUTIVE METRICS ---
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Global Ecosystem", f"{len(df):,}")
+m2.metric("Market Sectors", df['Category'].nunique())
+m3.metric("Critical Risks", (df['Safety_Score'] < 50).sum())
+m4.metric("Mean Safety Index", f"{df['Safety_Score'].mean():.1f}%")
 
-# --- TAB 1: NATIONAL OVERVIEW ---
-with tabs[0]:
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Monitored Entities", len(df))
-    col2.metric("Market Sectors", df['Category'].nunique())
-    col3.metric("Critical Risk Alerts", (df['Safety_Score'] < 50).sum())
-    col4.metric("Average Safety Rating", f"{df['Safety_Score'].mean():.1f}%")
+# --- INTERACTIVE NAVIGATION ---
+tab_market, tab_audit, tab_policy = st.tabs(["Market Landscape", "Single-Tool Audit", "Policy Recommendations"])
 
-    st.subheader("Market Concentration by Domain")
-    # Sunburst Chart for deeper interaction
-    fig_sun = px.sunburst(df.head(500), path=['Category', 'Name'], values='Safety_Score',
-                          color='Safety_Score', color_continuous_scale='RdYlGn')
-    st.plotly_chart(fig_sun, use_container_width=True)
-
-# --- TAB 2: TOOL INTELLIGENCE AUDIT (Deep Interactivity) ---
-with tabs[1]:
-    st.subheader("Identify & Audit Specific Tools")
-    search_col, filter_col = st.columns([2, 1])
+with tab_market:
+    col_chart, col_list = st.columns([2, 1])
     
-    with search_col:
-        tool_name = st.selectbox("Select a tool for a Deep-Dive Audit:", [""] + sorted(df['Name'].tolist()))
+    with col_chart:
+        st.subheader("Sector Concentration & Safety Index")
+        # Creating a more sophisticated Scatter with 'Safety' as color
+        fig = px.scatter(df.head(1000), x="Category", y="Safety_Score", 
+                         color="Safety_Score", size_max=10,
+                         color_continuous_scale='RdYlGn',
+                         title="Visualizing Safety Distribution (Sample: 1000 Tools)")
+        fig.update_layout(plot_bgcolor='white', paper_bgcolor='white')
+        st.plotly_chart(fig, use_container_width=True)
     
-    if tool_name:
-        tool_data = df[df['Name'] == tool_name].iloc[0]
+    with col_list:
+        st.subheader("Top Growing Sectors")
+        st.dataframe(df['Category'].value_counts().head(10), use_container_width=True)
+
+with tab_audit:
+    st.subheader("Individual Entity Intelligence")
+    # THE INTERACTIVE DRILL-DOWN: Select a tool
+    tool_list = sorted(df['Name'].unique().tolist())
+    selected_tool = st.selectbox("Search and Audit Tool Portfolio", [""] + tool_list)
+    
+    if selected_tool:
+        tool_data = df[df['Name'] == selected_tool].iloc[0]
         
+        # Design a "Report Card"
         st.markdown(f"""
-        <div class="report-card">
-            <h3>AUDIT REPORT: {tool_data['Name']}</h3>
-            <p><b>Category:</b> {tool_data['Category']} | <b>Safety Rating:</b> {tool_data['Safety_Score']}%</p>
-            <hr>
-            <p><b>Risk Profile:</b> {'🔴 HIGH RISK' if tool_data['Safety_Score'] < 60 else '🟢 COMPLIANT'}</p>
-            <p><b>Description:</b> {tool_data['Short Description']}</p>
+        <div class="audit-card">
+            <h2 style='color:#1f77b4; margin-top:0;'>{tool_data['Name']}</h2>
+            <p><strong>Primary Market:</strong> {tool_data['Category']}</p>
+            <p><strong>Safety Score:</strong> <span style='color:{"#d32f2f" if tool_data['Safety_Score'] < 60 else "#388e3c"}'>{tool_data['Safety_Score']}%</span></p>
+            <hr style='border: 0.5px solid #E6E9EF;'>
+            <p style='font-style: italic;'>{tool_data['Short Description']}</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Comparison logic
-        st.write("### How it compares to the Sector Average")
-        avg_safety = df[df['Category'] == tool_data['Category']]['Safety_Score'].mean()
-        st.progress(tool_data['Safety_Score']/100, text=f"Tool Score: {tool_data['Safety_Score']}")
-        st.progress(avg_safety/100, text=f"Sector Average ({tool_data['Category']}): {avg_safety:.1f}")
+        # Actionable Advice for Government
+        c1, c2 = st.columns(2)
+        with c1:
+            st.info("**Investment Signal:** " + ("Hold / Monitor" if tool_data['Safety_Score'] < 70 else "High Potential for Integration"))
+        with c2:
+            st.error("**Risk Mitigation:** " + ("Immediate Compliance Review Required" if tool_data['Safety_Score'] < 60 else "Routine Monitoring"))
 
-# --- TAB 3: INVESTMENT STRATEGY ---
-with tabs[2]:
-    st.subheader("White-Space Discovery: Where should the Government invest?")
-    st.info("Showing sectors with high strategic value but low tool density.")
+with tab_policy:
+    st.subheader("Strategic Opportunity Map")
+    st.write("Government investment should target 'Low Density' sectors with high strategic importance.")
     
-    low_density = df['Category'].value_counts().nsmallest(10).reset_index()
-    fig_invest = px.bar(low_density, x='count', y='Category', orientation='h',
-                       title="Under-served AI Markets (Investment Opportunities)",
-                       color='count', color_continuous_scale='Viridis')
-    st.plotly_chart(fig_invest, use_container_width=True)
+    # Horizontal Bar chart for readability
+    opp_data = df['Category'].value_counts().nsmallest(12).reset_index()
+    fig_opp = px.bar(opp_data, x='count', y='Category', orientation='h', 
+                     color='count', color_continuous_scale='Blues_r')
+    st.plotly_chart(fig_opp, use_container_width=True)
