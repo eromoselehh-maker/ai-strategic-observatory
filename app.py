@@ -157,3 +157,15 @@ elif nav == "Framework Library":
     for k, v in domains.items():
         with st.expander(f"📘 {k}"):
             st.write(v)
+# Replace your current load_data flags with this:
+df['D4_Privacy'] = df['Short Description'].str.contains('privacy|tracking|surveillance|monitor|harvest', case=False, na=False)
+df['D6_Integrity'] = df['Short Description'].str.contains('fake|synthetic|generate|deepfake|clone|manipulate', case=False, na=False)
+# Add a 'Critical' flag for tools that hit both
+df['Critical_Risk'] = df['D4_Privacy'] & df['D6_Integrity']
+# Update your fig_donut code:
+fig_donut = px.pie(sector_counts, names='Sector', values='Count', hole=0.6, 
+                 color_discrete_sequence=px.colors.sequential.Blues_r, 
+                 template='plotly_dark')
+# This line makes it 'pop' on hover:
+fig_donut.update_traces(hovertemplate="<b>%{label}</b><br>Volume: %{value}<br>Click to isolate")
+fig_donut.update_layout(hovermode="closest", showlegend=False, paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=10,b=10,l=10,r=10))
