@@ -2,129 +2,121 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. DESIGN SYSTEM & ALIGNMENT FIX
-st.set_page_config(page_title="AI Observatory | Philip’s Consulting", layout="wide")
+# 1. THE "WAR ROOM" UI
+st.set_page_config(page_title="AI Risk Observatory", layout="wide")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
-    .stApp { background-color: #0F172A; font-family: 'Plus Jakarta Sans', sans-serif; color: #E2E8F0; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500&family=Plus+Jakarta+Sans:wght@700&display=swap');
     
-    /* Top Ticker */
-    .ticker-wrap {
-        width: 100%; background: #1E293B; border-bottom: 2px solid #38BDF8;
-        padding: 8px 0; position: fixed; top: 0; left: 0; z-index: 1000;
+    .stApp { background-color: #050505; font-family: 'Inter', sans-serif; color: #A1A1AA; }
+    
+    /* Risk Status Cards */
+    .risk-card {
+        background: #0A0A0A; border: 1px solid #1A1A1A;
+        padding: 24px; border-radius: 8px; border-top: 3px solid #38BDF8;
     }
-    .ticker { 
-        display: inline-block; white-space: nowrap; color: #38BDF8; font-family: monospace; animation: ticker 40s linear infinite;
-    }
-    @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-
-    /* UNIFIED BUTTON ALIGNMENT (The "Fix") */
-    div.stButton > button {
-        width: 100% !important;
-        height: 140px !important;
-        background-color: #1E293B !important;
-        border: 1px solid #334155 !important;
-        border-radius: 16px !important;
-        color: #F8FAFC !important;
-        transition: all 0.3s ease;
-        display: flex; flex-direction: column; justify-content: center;
-    }
-    div.stButton > button:hover {
-        border-color: #38BDF8 !important;
-        background-color: #26334D !important;
-        transform: translateY(-5px);
+    .status-alert {
+        background: rgba(220, 38, 38, 0.1); border: 1px solid #DC2626;
+        color: #F87171; padding: 15px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
     }
     
-    /* High-Contrast Critical Button */
-    .crit-btn div button { border: 2px solid #EF4444 !important; color: #EF4444 !important; font-weight: bold !important; }
-
-    .main .block-container { padding-top: 6.5rem; }
+    /* Typography */
+    .hero-text { font-family: 'Plus Jakarta Sans', sans-serif; color: #FFFFFF; letter-spacing: -1px; }
+    .label-text { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #71717A; text-transform: uppercase; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. ACCURATE DATA ANALYSIS ENGINE
+# 2. AGGRESSIVE RISK ENGINE
 @st.cache_data
 def load_forensic_data():
-    try:
-        df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
-        df = df.drop_duplicates(subset=['Name']).dropna(subset=['Name', 'Category'])
-        
-        # WEIGHED ANALYSIS (More realistic)
-        # D4: Malicious Use (Cyber/Phishing/Surveillance)
-        df['D4_Score'] = df['Short Description'].str.contains('phishing|malware|surveillance|tracking|hack', case=False, na=False).astype(int) * 50
-        # D6: Socioeconomic/Integrity (Deepfake/Fake News/Displacement)
-        df['D6_Score'] = df['Short Description'].str.contains('deepfake|fake|synthetic|clone|replace', case=False, na=False).astype(int) * 40
-        
-        # Base risk + weighed factors
-        df['Consultancy_Risk_Index'] = 10 + df['D4_Score'] + df['D6_Score']
-        # Cap at 100%
-        df['Consultancy_Risk_Index'] = df['Consultancy_Risk_Index'].clip(upper=100)
-        
-        return df
-    except: return pd.DataFrame()
+    df = pd.read_csv("Complete AI Tools Dataset 2025 - 16763 Tools from AIToolBuzz.csv")
+    df = df.drop_duplicates(subset=['Name']).dropna(subset=['Category'])
+    
+    # AGGRESSIVE SCORING (Consultancy Grade)
+    # We define "Red Lines" - if these exist, the tool is High Risk
+    red_lines = 'deepfake|surveillance|tracking|hack|exploit|phishing|facial recognition|clone'
+    yellow_lines = 'data harvest|biometric|synthetic|scraping|automation'
+    
+    df['Red_Flag'] = df['Short Description'].str.contains(red_lines, case=False, na=False)
+    df['Yellow_Flag'] = df['Short Description'].str.contains(yellow_lines, case=False, na=False)
+    
+    # Calculate Score 0-100
+    df['Risk_Score'] = 15 # Base risk
+    df.loc[df['Yellow_Flag'], 'Risk_Score'] += 35
+    df.loc[df['Red_Flag'], 'Risk_Score'] += 50 # Immediate High Risk
+    
+    return df
 
 df = load_forensic_data()
 
-# State Management
-if 'view' not in st.session_state: st.session_state.view = "Default"
+# 3. EXECUTIVE HEADER
+st.markdown("<p class='label-text'>Strategic Advisory: Philip's Consulting</p>", unsafe_allow_html=True)
+st.markdown("<h1 class='hero-text'>AI ENTITY OBSERVATORY</h1>", unsafe_allow_html=True)
 
-# 3. UI LAYOUT
-st.markdown(f'<div class="ticker-wrap"><div class="ticker"> ● PHILIP\'S CONSULTING STRATEGIC AUDIT ● V10 FORENSIC ENGINE ACTIVE ● ALIGNMENT SYNCED ● </div></div>', unsafe_allow_html=True)
-
-st.markdown("<h1 style='font-weight:800; letter-spacing:-2px;'>Strategic Risk Observatory</h1>", unsafe_allow_html=True)
-
-# TOP ACTION ROW (Perfectly Aligned)
+# 4. TOP-LEVEL INTELLIGENCE
 c1, c2, c3 = st.columns(3)
+
 with c1:
-    if st.button(f"📊 {len(df):,}\nTotal Assets Scanned"): st.session_state.view = "Default"
+    st.markdown(f"""<div class='risk-card'><p class='label-text'>Market Coverage</p>
+                <h2 style='color:white; margin:0;'>{len(df):,}</h2></div>""", unsafe_allow_html=True)
 with c2:
-    avg = int(df['Consultancy_Risk_Index'].mean())
-    if st.button(f"🛡️ {avg}%\nAggregate Market Risk"): st.session_state.view = "Default"
+    critical_count = len(df[df['Risk_Score'] >= 85])
+    st.markdown(f"""<div class='risk-card' style='border-top-color: #DC2626;'>
+                <p class='label-text' style='color:#DC2626;'>Red Alert Assets</p>
+                <h2 style='color:#DC2626; margin:0;'>{critical_count}</h2></div>""", unsafe_allow_html=True)
 with c3:
-    st.markdown('<div class="crit-btn">', unsafe_allow_html=True)
-    crit_count = (df['Consultancy_Risk_Index'] >= 90).sum()
-    if st.button(f"🚨 {crit_count}\nCritical Risk Alerts"): st.session_state.view = "Critical"
-    st.markdown('</div>', unsafe_allow_html=True)
+    avg_risk = int(df['Risk_Score'].mean())
+    st.markdown(f"""<div class='risk-card' style='border-top-color: #FBBF24;'>
+                <p class='label-text' style='color:#FBBF24;'>Avg Risk Index</p>
+                <h2 style='color:#FBBF24; margin:0;'>{avg_risk}%</h2></div>""", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# 4. DRILL-DOWN LOGIC
-if st.session_state.view == "Critical":
-    st.markdown("### 🚫 High-Priority Target List (Risk Index > 90%)")
-    high_risk = df[df['Consultancy_Risk_Index'] >= 90].head(12)
-    cols = st.columns(4)
-    for i, (_, row) in enumerate(high_risk.iterrows()):
-        with cols[i % 4]:
-            st.markdown(f"""
-                <div style="background:#1E293B; border-top: 4px solid #EF4444; padding:15px; border-radius:10px; height:180px;">
-                    <h4 style="margin:0; font-size:1rem;">{row['Name']}</h4>
-                    <p style="color:#EF4444; font-size:0.7rem; font-weight:bold;">MIT D4/D6 VIOLATION</p>
-                    <p style="font-size:0.8rem; color:#94A3B8;">{row['Short Description'][:80]}...</p>
-                </div>
-            """, unsafe_allow_html=True)
-else:
-    # 5. THE "POP" INTERACTIVE GRAPHS
-    g1, g2 = st.columns(2)
-    
-    with g1:
-        st.markdown("<p style='font-size:0.7rem; color:#94A3B8; font-weight:bold; letter-spacing:1px;'>MARKET COMPOSITION</p>", unsafe_allow_html=True)
-        pie_df = df['Category'].value_counts().head(8).reset_index()
-        pie_df.columns = ['Sector', 'Value']
-        fig_pie = px.pie(pie_df, names='Sector', values='Value', hole=0.65, 
-                         template='plotly_dark', color_discrete_sequence=px.colors.sequential.Blues_r)
-        # HOVER POP SETTINGS
-        fig_pie.update_traces(hovertemplate="<b>%{label}</b><br>Share: %{percent}<br>Total: %{value}")
-        fig_pie.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=0,b=0,l=0,r=0))
-        st.plotly_chart(fig_pie, use_container_width=True)
+# 5. THE VISUAL AUDIT (High Contrast)
+col_graph, col_list = st.columns([1.5, 1])
 
-    with g2:
-        st.markdown("<p style='font-size:0.7rem; color:#94A3B8; font-weight:bold; letter-spacing:1px;'>SECTOR RISK SCOREBOARD</p>", unsafe_allow_html=True)
-        bar_df = df.groupby('Category')['Consultancy_Risk_Index'].mean().sort_values(ascending=False).head(10).reset_index()
-        bar_df.columns = ['Industry', 'Risk']
-        fig_bar = px.bar(bar_df, x='Risk', y='Industry', orientation='h', color='Risk', color_continuous_scale='Reds')
-        # HOVER POP SETTINGS
-        fig_bar.update_traces(hovertemplate="<b>%{y}</b><br>Forensic Risk: %{x}%")
-        fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False, template='plotly_dark')
-        st.plotly_chart(fig_bar, use_container_width=True)
+with col_graph:
+    st.markdown("<p class='label-text'>Risk Distribution (MIT Domains)</p>", unsafe_allow_html=True)
+    # Donut Chart - Using High Contrast Red for High Risk
+    sector_risk = df.groupby('Category')['Risk_Score'].mean().sort_values(ascending=False).head(8).reset_index()
+    
+    fig = px.pie(sector_risk, names='Category', values='Risk_Score', hole=0.7,
+                 color_discrete_sequence=['#DC2626', '#EF4444', '#F87171', '#1E293B', '#0F172A'])
+    
+    fig.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=0,b=0,l=0,r=0))
+    fig.update_traces(hovertemplate="<b>%{label}</b><br>Risk Intensity: %{value}%<extra></extra>")
+    st.plotly_chart(fig, use_container_width=True)
+
+with col_list:
+    st.markdown("<p class='label-text'>Live Critical Warnings</p>", unsafe_allow_html=True)
+    # Only show the truly dangerous ones here
+    red_alerts = df[df['Red_Flag']].head(5)
+    for _, row in red_alerts.iterrows():
+        st.markdown(f"""
+            <div class='status-alert'>
+                <small>MIT D4/D6 VIOLATION</small><br>
+                <b>{row['Name']}</b><br>
+                <span style='font-size:0.75rem;'>{row['Short Description'][:90]}...</span>
+            </div><br>
+        """, unsafe_allow_html=True)
+
+# 6. DEEP SCAN (Sidebar)
+st.sidebar.markdown("### 🔍 Strategic Audit")
+target = st.sidebar.selectbox("Select Target", [""] + sorted(df['Name'].unique().tolist()))
+
+if target:
+    st.markdown("---")
+    asset = df[df['Name'] == target].iloc[0]
+    
+    # Conditional formatting for the Audit result
+    audit_color = "#DC2626" if asset['Risk_Score'] >= 85 else "#38BDF8"
+    st.markdown(f"<h2 style='color:{audit_color};'>Audit Report: {target}</h2>", unsafe_allow_html=True)
+    
+    ca, cb = st.columns(2)
+    with ca:
+        st.write(f"**Entity Description:** {asset['Short Description']}")
+    with cb:
+        st.metric("Risk Level", f"{int(asset['Risk_Score'])}%", 
+                  delta="CRITICAL" if asset['Red_Flag'] else "STABLE", 
+                  delta_color="inverse" if asset['Red_Flag'] else "normal")
