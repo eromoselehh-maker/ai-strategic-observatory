@@ -5,7 +5,7 @@ import requests
 
 # --- 1. SETTINGS & DESIGN ---
 st.set_page_config(page_title="Global AI Strategic Intelligence", layout="wide")
-NEWS_API_KEY = "PASTE_YOUR_API_KEY_HERE" # Replace this!
+NEWS_API_KEY = "96a1acccb0d64d8f8f2dee11c7ac4ade" # Replace this!
 
 @st.cache_data
 def load_and_scrub_data():
